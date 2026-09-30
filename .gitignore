@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+key.properties
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# Builds
+dist/
+build/
+out/
+.gradle/
+.cxx/
+*.apk
+*.aab
+*.ipa
+*.jsbundle
+
+# iOS
+Pods/
+**/Pods/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Metro / RN
+.metro-health-check*
