@@ -1,4 +1,4 @@
-function StatCard({ label, value, icon, trend, trendDirection = 'up' }) {
+function StatCard({ label, value, icon }) {
   return (
     <div className="ui-stat">
       {icon && <div className="ui-stat__icon">{icon}</div>}
@@ -6,9 +6,6 @@ function StatCard({ label, value, icon, trend, trendDirection = 'up' }) {
         <p className="ui-stat__label">{label}</p>
         <p className="ui-stat__value">{value}</p>
       </div>
-      {trend && (
-        <span className={`ui-stat__trend ui-stat__trend--${trendDirection}`}>{trend}</span>
-      )}
     </div>
   )
 }

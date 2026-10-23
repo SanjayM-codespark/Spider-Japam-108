@@ -17,6 +17,15 @@
   text-align: center;
 }
 
+.landing__logo {
+  display: block;
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  margin: 0 auto 20px;
+  border-radius: 24px;
+}
+
 .landing__title {
   font-size: 48px;
 }

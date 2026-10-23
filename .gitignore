@@ -43,4 +43,8 @@ Thumbs.db
 *.swp
 
 # Metro / RN
-.metro-health-check*
+.metro-health-check*backend/check_table.js
+backend/check_user.js
+backend/db-check.js
+backend/test_api.js
+backend/tmp/

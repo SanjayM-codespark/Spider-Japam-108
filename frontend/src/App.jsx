@@ -4,6 +4,7 @@ import AdminLogin from './pages/AdminLogin.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx'
 import TermsOfService from './pages/TermsOfService.jsx'
+import ResetPassword from './pages/ResetPassword.jsx'
 import { getToken } from './api.js'
 
 function ProtectedRoute() {
@@ -20,6 +21,7 @@ function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/admin" element={<LoginRoute />} />
       <Route path="/admin/dashboard" element={<ProtectedRoute />} />
       <Route path="/admin/:section" element={<ProtectedRoute />} />

@@ -21,14 +21,18 @@ const CONTENT_SELECT = `
            c.name AS category_name,
            c.icon AS category_icon,
            c.image_url AS category_image_url,
+           sl.subcategory_id,
+           sc.name AS subcategory_name,
            sl.deity,
            sl.short_description,
            sl.content,
            sl.meaning,
            sl.source,
-           sl.bead_count
+           sl.bead_count,
+           sl.is_default
     FROM sacred_library sl
     JOIN categories c ON c.id = sl.category_id
+    LEFT JOIN subcategories sc ON sc.id = sl.subcategory_id
     WHERE sl.status = 'published'
       AND c.status = 'active'
 `;
@@ -100,11 +104,15 @@ const getLibrary = async (req, res) => {
  * is findable by it.
  */
 const listContents = async (req, res) => {
-    const { category_id: categoryId, q } = req.query;
+    const { category_id: categoryId, subcategory_id: subcategoryId, q } = req.query;
     const search = typeof q === "string" ? q.trim() : "";
 
     if (categoryId !== undefined && !isPositiveInt(categoryId)) {
         return res.status(400).json({ success: false, message: "category_id must be a number." });
+    }
+
+    if (subcategoryId !== undefined && !isPositiveInt(subcategoryId)) {
+        return res.status(400).json({ success: false, message: "subcategory_id must be a number." });
     }
 
     try {
@@ -114,6 +122,11 @@ const listContents = async (req, res) => {
         if (categoryId !== undefined) {
             params.push(Number(categoryId));
             conditions.push(`sl.category_id = $${params.length}`);
+        }
+
+        if (subcategoryId !== undefined) {
+            params.push(Number(subcategoryId));
+            conditions.push(`sl.subcategory_id = $${params.length}`);
         }
 
         if (search) {
@@ -169,4 +182,37 @@ const getContent = async (req, res) => {
     }
 };
 
-module.exports = { getLibrary, listContents, getContent };
+/**
+ * GET /api/library/subcategories?category_id=1
+ *
+ * The active subcategories of one active category, for the app's second level
+ * of browsing. category_id is required: a subcategory only means something in
+ * the context of its category, and listing every subcategory would mix them.
+ */
+const listSubcategories = async (req, res) => {
+    const { category_id: categoryId } = req.query;
+
+    if (!isPositiveInt(categoryId)) {
+        return res.status(400).json({ success: false, message: "category_id must be a number." });
+    }
+
+    try {
+        const result = await query(
+            `SELECT s.id, s.category_id, s.name, s.description, s.icon, s.image_url
+             FROM subcategories s
+             JOIN categories c ON c.id = s.category_id
+             WHERE s.category_id = $1
+               AND s.status = 'active'
+               AND c.status = 'active'
+             ORDER BY s.name ASC`,
+            [Number(categoryId)],
+        );
+
+        return res.json({ success: true, subcategories: result.rows });
+    } catch (err) {
+        console.error("listSubcategories error:", err.message);
+        return res.status(500).json({ success: false, message: "Could not load the subcategories." });
+    }
+};
+
+module.exports = { getLibrary, listContents, getContent, listSubcategories };

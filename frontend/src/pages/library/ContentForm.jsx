@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { Button, FormField, Input, Select, Textarea } from '../../components/ui/index.js'
+import { useState, useEffect, useRef } from 'react'
+import { Button, FormField, Input, Select, Textarea, Checkbox } from '../../components/ui/index.js'
 import { apiFetch } from '../../api.js'
 import useCategories from '../categories/useCategories.js'
+import useSubcategories from '../subcategories/useSubcategories.js'
 import { CONTENT_STATUSES, DEFAULT_CONTENT_STATUS, BEAD_COUNTS, DEFAULT_BEAD_COUNT } from './constants.js'
 
 /**
@@ -46,6 +47,15 @@ function ContentForm({
     const [beadCount, setBeadCount] = useState(
         initial?.bead_count != null ? String(initial.bead_count) : DEFAULT_BEAD_COUNT,
     )
+    const [isDefault, setIsDefault] = useState(initial?.is_default === true)
+
+    const [selectedCategory] = useState(initial?.category_name || '')
+
+    // Optional, so an existing item usually has none. Held as a string to match
+    // the Select, and initialised from the row so an edit keeps it.
+    const [subcategoryId, setSubcategoryId] = useState(
+        initial?.subcategory_id != null ? String(initial.subcategory_id) : '',
+    )
 
     const [error, setError] = useState('')
     const [saving, setSaving] = useState(false)
@@ -54,6 +64,33 @@ function ContentForm({
     // page does not fetch it.
     const { options: categoryOptions, loading: categoriesLoading, error: categoriesError } =
         useCategories(showFull)
+
+    // The subcategory picker lists the subcategories of the chosen category, so
+    // it is keyed to categoryId and stays empty until a category is picked.
+    const {
+        options: subcategoryOptions,
+        loading: subcategoriesLoading,
+        error: subcategoriesError,
+    } = useSubcategories(showFull ? categoryId : '', showFull)
+
+    // Update selected category name when categoryId changes
+
+
+    // A subcategory belongs to exactly one category, so switching category
+    // invalidates the current choice. Cleared rather than remapped, because the
+    // matching subcategory may not exist under the new category. Guarded by a
+    // ref so the initial render (where the id came from the row being edited)
+    // does not immediately wipe the saved subcategory.
+    const previousCategoryId = useRef(categoryId)
+    useEffect(() => {
+        if (previousCategoryId.current !== categoryId) {
+            setSubcategoryId('')
+            previousCategoryId.current = categoryId
+        }
+    }, [categoryId])
+
+    // Only published content can be default. Uncheck if status changes away from published.
+
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -87,6 +124,12 @@ function ContentForm({
             if (showFull) {
                 payload.title = title.trim()
                 payload.category_id = categoryId
+                if (!subcategoryId) {
+                    setError('Subcategory is required.')
+                    setSaving(false)
+                    return
+                }
+                payload.subcategory_id = Number(subcategoryId)
                 payload.deity = deity.trim()
                 payload.short_description = shortDescription.trim()
                 payload.content = content.trim()
@@ -94,6 +137,7 @@ function ContentForm({
                 payload.source = source.trim()
                 payload.status = status
                 payload.bead_count = beadCount
+                payload.is_default = isDefault
             } else {
                 payload.meaning = meaning.trim()
             }
@@ -168,6 +212,29 @@ function ContentForm({
                     />
                 </FormField>
 
+                <FormField
+                    label="Subcategory"
+                    required
+                    id="content-subcategory"
+                    error={subcategoriesError}
+                    hint={
+                        !categoryId
+                            ? 'Choose a category first'
+                            : subcategoriesLoading
+                              ? 'Loading subcategories...'
+                              : undefined
+                    }
+                >
+                    <Select
+                        id="content-subcategory"
+                        value={subcategoryId}
+                        onChange={(e) => setSubcategoryId(e.target.value)}
+                        options={subcategoryOptions}
+                        placeholder="Select Subcategory"
+                        disabled={!categoryId || subcategoriesLoading}
+                    />
+                </FormField>
+
                 <FormField label="Title" required id="content-title">
                     <Input
                         id="content-title"
@@ -224,7 +291,9 @@ function ContentForm({
                     />
                 </FormField>
 
-                <FormField label="Status" id="content-status">
+                <FormField
+                    label="Status"
+                    id="content-status">
                     <Select
                         id="content-status"
                         value={status}
@@ -246,6 +315,20 @@ function ContentForm({
                         options={BEAD_COUNTS}
                     />
                 </FormField>
+
+                {status === 'published' && selectedCategory === 'Mantras' && (
+                    <FormField
+                        label="Set as Default Content"
+                        id="content-is-default"
+                        hint="Only one content can be default. This will be shown on the mobile app home screen."
+                    >
+                        <Checkbox
+                            id="content-is-default"
+                            checked={isDefault}
+                            onChange={(e) => setIsDefault(e.target.checked)}
+                        />
+                    </FormField>
+                )}
             </div>
 
             <div className="demo__gap" />

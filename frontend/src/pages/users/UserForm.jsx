@@ -10,12 +10,9 @@ const toDateInput = (value) => {
 }
 
 function UserForm({ initial = null, onSaved, submitLabel = 'Save user' }) {
-    const isPremium = Boolean(initial?.premium)
     const [name, setName] = useState(initial?.name || '')
     const [email, setEmail] = useState(initial?.email || '')
-    const [premiumEnd, setPremiumEnd] = useState(
-        isPremium ? toDateInput(initial?.premium_end) : ''
-    )
+    const [phone, setPhone] = useState(initial?.phone || '')
     const [error, setError] = useState('')
     const [saving, setSaving] = useState(false)
 
@@ -40,7 +37,7 @@ function UserForm({ initial = null, onSaved, submitLabel = 'Save user' }) {
                 body: JSON.stringify({
                     name: name.trim(),
                     email: email.trim(),
-                    premium_end: premiumEnd || null,
+                    phone: phone.trim() || null,
                 }),
             })
             const data = await response.json()
@@ -79,22 +76,13 @@ function UserForm({ initial = null, onSaved, submitLabel = 'Save user' }) {
             </FormField>
 
             <div className="demo__gap" />
-            <FormField
-                label="Premium ending date"
-                id="user-premium-end"
-                hint={
-                    isPremium
-                        ? initial?.premium_start
-                            ? `Premium started on ${new Date(initial.premium_start).toLocaleDateString()}`
-                            : 'Extend the premium ending date.'
-                        : 'Set a date to convert this user to premium. Leave empty to keep them non-premium.'
-                }
-            >
+            <FormField label="Mobile Number" id="user-phone">
                 <Input
-                    id="user-premium-end"
-                    type="date"
-                    value={premiumEnd}
-                    onChange={(e) => setPremiumEnd(e.target.value)}
+                    id="user-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. 9876543210"
                 />
             </FormField>
 

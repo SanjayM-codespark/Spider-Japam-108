@@ -15,8 +15,9 @@ import { ACCEPTED_IMAGE_TYPES, CATEGORY_STATUSES, MAX_IMAGE_BYTES } from './cons
  * it has been created. So the file is held here and sent in a second request
  * once the row exists, which keeps this to one visible Save.
  *
- * `icon` and the image are complementary: the app shows the image when there is
- * one and falls back to the emoji.
+ * `icon` is no longer edited here. The stored value is still sent through on
+ * edit so saving an existing category does not wipe it, and left empty on
+ * create.
  *
  * Fields initialise from `initial` once. Callers that swap the row being edited
  * remount this with a matching `key` so the fields follow the new row without a
@@ -25,7 +26,7 @@ import { ACCEPTED_IMAGE_TYPES, CATEGORY_STATUSES, MAX_IMAGE_BYTES } from './cons
 function CategoryForm({ initial = null, onSaved, onCancel, submitLabel = 'Save' }) {
     const [name, setName] = useState(initial?.name || '')
     const [description, setDescription] = useState(initial?.description || '')
-    const [icon, setIcon] = useState(initial?.icon || '')
+    const icon = initial?.icon || ''
     const [status, setStatus] = useState(initial?.status || 'active')
 
     const [imageUrl, setImageUrl] = useState(initial?.image_url || '')
@@ -197,25 +198,11 @@ function CategoryForm({ initial = null, onSaved, onCancel, submitLabel = 'Save' 
                 </FormField>
 
                 <FormField
-                    label="Icon"
-                    id="category-icon"
-                    hint="An emoji, shown when the category has no image"
-                >
-                    <Input
-                        id="category-icon"
-                        value={icon}
-                        onChange={(e) => setIcon(e.target.value)}
-                        placeholder="e.g. 🙏"
-                        maxLength={60}
-                    />
-                </FormField>
-
-                <FormField
                     label="Image"
                     id="category-image"
                     className="ui-field--wide"
                     error={imageError}
-                    hint="PNG, JPEG, WEBP or GIF, up to 2 MB. Used instead of the icon when present."
+                    hint="PNG, JPEG, WEBP or GIF, up to 2 MB."
                 >
                     <div className="demo__flex" style={{ alignItems: 'center', gap: '12px' }}>
                         <input

@@ -118,7 +118,7 @@ async function listCategories(req, res) {
 
     try {
         const result = await query(
-            `SELECT ${CATEGORY_FIELDS} FROM categories ${where} ORDER BY name ASC`,
+            `SELECT ${CATEGORY_FIELDS} FROM categories ${where} ORDER BY id ASC`,
             params,
         );
 

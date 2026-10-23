@@ -13,17 +13,22 @@ import {
 import { apiFetch, clearSession } from '../api.js'
 import { usePageTitle } from '../usePageTitle.js'
 import { useSettings } from '../useSettings.js'
-import AddSubscription from './subscriptions/AddSubscription.jsx'
-import ManageSubscription from './subscriptions/ManageSubscription.jsx'
+// Hidden for now: Users, Subscription and Payment Settings.
+// import AddSubscription from './subscriptions/AddSubscription.jsx'
+// import ManageSubscription from './subscriptions/ManageSubscription.jsx'
 import AddHelp from './help/AddHelp.jsx'
 import ManageHelp from './help/ManageHelp.jsx'
 import ManageUsers from './users/ManageUsers.jsx'
+import ManageUserMantras from './users/ManageUserMantras.jsx'
 import Settings from './settings/Settings.jsx'
 import AddContent from './library/AddContent.jsx'
 import ManageContent from './library/ManageContent.jsx'
 import ContentMeaning from './library/ContentMeaning.jsx'
 import AddCategory from './categories/AddCategory.jsx'
 import ManageCategories from './categories/ManageCategories.jsx'
+import AddSubcategory from './subcategories/AddSubcategory.jsx'
+import ManageSubcategories from './subcategories/ManageSubcategories.jsx'
+import logo from '../assets/japam108_logo.png'
 import '../App.css'
 
 const roleOptions = [
@@ -32,19 +37,20 @@ const roleOptions = [
     { value: 'member', label: 'Member' },
 ]
 
-const USER_KEYS = ['users', 'all', 'premium', 'non-premium']
-const SUBSCRIPTION_KEYS = ['subscription', 'add-subscription', 'manage-subscription']
+const USER_KEYS = ['users', 'all', 'deleted', 'user-mantras']
+// const SUBSCRIPTION_KEYS = ['subscription', 'add-subscription', 'manage-subscription']
 const HELP_KEYS = ['help', 'add-help', 'manage-help']
 const SETTINGS_KEYS = ['settings', 'settings-general', 'settings-payment']
 const LIBRARY_KEYS = ['sacred-library', 'add-content', 'manage-content', 'library-content']
 const CATEGORY_KEYS = ['category', 'add-category', 'manage-category']
+// const SUBCATEGORY_KEYS = ['subcategory', 'add-subcategory', 'manage-subcategory']
 
 const PAGE_TITLES = {
     dashboard: 'Dashboard',
     users: 'Users',
-    all: 'Users',
-    premium: 'Premium Users',
-    'non-premium': 'Non Premium Users',
+    all: 'Active Users',
+    deleted: 'Deleted Users',
+    'user-mantras': 'User Mantras',
     subscription: 'Subscription',
     'add-subscription': 'Add Subscription',
     'manage-subscription': 'Manage Subscription',
@@ -59,53 +65,61 @@ const PAGE_TITLES = {
     category: 'Category',
     'add-category': 'Add Category',
     'manage-category': 'Manage Category',
+    subcategory: 'Subcategory',
+    'add-subcategory': 'Add Subcategory',
+    'manage-subcategory': 'Manage Subcategory',
     settings: 'Settings',
     'settings-general': 'General Settings',
     'settings-payment': 'Payment Settings',
 }
 
 const SIDEBAR_LINKS = (active) => [
-    { key: 'dashboard', label: 'Dashboard', active: active === 'dashboard' },
+    { key: 'dashboard', label: 'Dashboard', icon: 'fa-gauge-high', active: active === 'dashboard' },
     {
         key: 'users',
         label: 'Users',
+        icon: 'fa-users',
         active: USER_KEYS.includes(active),
         subLinks: [
-            { key: 'all', label: 'All Users', active: active === 'all' },
-            { key: 'premium', label: 'Premium Users', active: active === 'premium' },
-            { key: 'non-premium', label: 'Non Premium Users', active: active === 'non-premium' },
+            { key: 'all', label: 'Active Users', icon: 'fa-list', active: active === 'all' },
+            { key: 'deleted', label: 'Deleted Users', icon: 'fa-trash', active: active === 'deleted' },
+            { key: 'user-mantras', label: 'User Mantras', icon: 'fa-prayer-beads', active: active === 'user-mantras' },
         ],
     },
-    {
-        key: 'subscription',
-        label: 'Subscription',
-        active: SUBSCRIPTION_KEYS.includes(active),
-        subLinks: [
-            {
-                key: 'add-subscription',
-                label: 'Add Subscription',
-                active: active === 'add-subscription',
-            },
-            {
-                key: 'manage-subscription',
-                label: 'Manage Subscription',
-                active: active === 'manage-subscription',
-            },
-        ],
-    },
+    // Hidden for now: Subscription section.
+    // {
+    //     key: 'subscription',
+    //     label: 'Subscription',
+    //     active: SUBSCRIPTION_KEYS.includes(active),
+    //     subLinks: [
+    //         {
+    //             key: 'add-subscription',
+    //             label: 'Add Subscription',
+    //             active: active === 'add-subscription',
+    //         },
+    //         {
+    //             key: 'manage-subscription',
+    //             label: 'Manage Subscription',
+    //             active: active === 'manage-subscription',
+    //         },
+    //     ],
+    // },
     {
         key: 'help',
         label: 'Helps',
+        icon: 'fa-circle-question',
         active: HELP_KEYS.includes(active),
         subLinks: [
             {
                 key: 'add-help',
                 label: 'Add Helps',
+                icon: 'fa-plus',
                 active: active === 'add-help',
             },
             {
                 key: 'manage-help',
                 label: 'Helps',
+                icon: 'fa-list',
                 active: active === 'manage-help',
             },
         ],
@@ -114,33 +128,51 @@ const SIDEBAR_LINKS = (active) => [
     {
         key: 'sacred-library',
         label: 'Sacred Library',
+        icon: 'fa-book-open',
         active: LIBRARY_KEYS.includes(active),
         subLinks: [
             {
                 key: 'add-content',
                 label: 'Add Content',
+                icon: 'fa-plus',
                 active: active === 'add-content',
             },
             {
                 key: 'manage-content',
                 label: 'Manage Content',
+                icon: 'fa-list-check',
                 active: active === 'manage-content',
             },
             // A group of its own, so this is the third level of the sidebar.
             {
                 key: 'category',
                 label: 'Category',
+                icon: 'fa-layer-group',
                 active: CATEGORY_KEYS.includes(active),
                 subLinks: [
                     {
                         key: 'add-category',
                         label: 'Add Category',
+                        icon: 'fa-plus',
                         active: active === 'add-category',
                     },
                     {
                         key: 'manage-category',
                         label: 'Manage Category',
+                        icon: 'fa-list',
                         active: active === 'manage-category',
+                    },
+                    {
+                        key: 'add-subcategory',
+                        label: 'Add Subcategory',
+                        icon: 'fa-plus',
+                        active: active === 'add-subcategory',
+                    },
+                    {
+                        key: 'manage-subcategory',
+                        label: 'Manage Subcategory',
+                        icon: 'fa-list',
+                        active: active === 'manage-subcategory',
                     },
                 ],
             },
@@ -149,18 +181,21 @@ const SIDEBAR_LINKS = (active) => [
     {
         key: 'settings',
         label: 'Settings',
+        icon: 'fa-gear',
         active: SETTINGS_KEYS.includes(active),
         subLinks: [
             {
                 key: 'settings-general',
                 label: 'General Settings',
+                icon: 'fa-sliders',
                 active: active === 'settings-general',
             },
-            {
-                key: 'settings-payment',
-                label: 'Payment Settings',
-                active: active === 'settings-payment',
-            },
+            // Hidden for now: Payment Settings.
+            // {
+            //     key: 'settings-payment',
+            //     label: 'Payment Settings',
+            //     active: active === 'settings-payment',
+            // },
         ],
     },
 ]
@@ -175,6 +210,7 @@ function AdminDashboard() {
     usePageTitle(pageTitle)
     const { app_name: appName } = useSettings()
     const [profile, setProfile] = useState({ name: '', email: '', role: 'member' })
+    const [counts, setCounts] = useState({ contents: null, categories: null, users: null })
     const [admin, setAdmin] = useState(() => {
         try {
             const stored = JSON.parse(localStorage.getItem('naamjap_admin') || 'null')
@@ -189,7 +225,8 @@ function AdminDashboard() {
     const adminInitial = (adminName || 'A').charAt(0).toUpperCase()
     const adminEmail = admin.email || 'admin@naamjap.com'
 
-    const isUsersView = USER_KEYS.includes(activeLink) && activeLink !== 'users'
+    // Hidden for now: Users and Subscription views.
+    // const isUsersView = USER_KEYS.includes(activeLink) && activeLink !== 'users'
 
     useEffect(() => {
         let mounted = true
@@ -200,6 +237,29 @@ function AdminDashboard() {
                 if (!mounted || !data.success) return
                 setAdmin(data.admin)
                 localStorage.setItem('naamjap_admin', JSON.stringify(data.admin))
+            })
+            .catch(() => { })
+
+        return () => {
+            mounted = false
+        }
+    }, [])
+
+    useEffect(() => {
+        let mounted = true
+
+        Promise.all([
+            apiFetch('/admin/library-contents').then((response) => response.json()),
+            apiFetch('/admin/categories').then((response) => response.json()),
+            apiFetch('/admin/users/count').then((response) => response.json()),
+        ])
+            .then(([contentData, categoryData, userData]) => {
+                if (!mounted) return
+                setCounts({
+                    contents: contentData.success ? contentData.count : null,
+                    categories: categoryData.success ? categoryData.count : null,
+                    users: userData.success ? userData.counts : null,
+                })
             })
             .catch(() => { })
 
@@ -231,7 +291,9 @@ function AdminDashboard() {
         <div className="demo-layout">
             <Sidebar
                 open={sidebarOpen}
-                brand={appName}
+                brand={
+                    <img src={logo} alt={appName} className="ui-sidebar__brand-logo" />
+                }
                 onNavigate={handleNav}
                 links={SIDEBAR_LINKS(activeLink)}
             // actions={<Button size="sm" onClick={() => setModalOpen(true)}>Sign in</Button>}
@@ -318,20 +380,33 @@ function AdminDashboard() {
 
                 <div className="demo">
                     {activeLink === 'dashboard' && (
-                        <div className="demo__stats">
-                            <StatCard label="Total users" value="1" trend="+12%" trendDirection="up" />
-                            <StatCard label="Daily japa" value="10" trend="+4.2%" trendDirection="up" />
-                        </div>
+                        <>
+                            <div className="demo__welcome">
+                                <h2 className="demo__welcome-title">Welcome back, {adminName}!</h2>
+                                <p className="demo__welcome-text">
+                                    Here is an overview of your {appName} admin panel.
+                                </p>
+                            </div>
+                            <div className="demo__stats">
+                                <StatCard label="Total Users" value={counts.users?.total ?? '—'} />
+                                <StatCard label="Deleted" value={counts.users?.deleted ?? '—'} />
+                                <StatCard label="Content" value={counts.contents ?? '—'} />
+                                <StatCard label="Categories" value={counts.categories ?? '—'} />
+                            </div>
+                        </>
                     )}
 
-                    {isUsersView && (
+                    {/* Users views. */}
+                    {USER_KEYS.includes(activeLink) && activeLink !== 'users' && activeLink !== 'user-mantras' && (
                         <ManageUsers plan={activeLink} title={PAGE_TITLES[activeLink]} />
                     )}
+                    {activeLink === 'user-mantras' && <ManageUserMantras />}
 
-                    {activeLink === 'add-subscription' && <AddSubscription />}
+                    {/* Hidden for now: Subscription views. */}
+                    {/* {activeLink === 'add-subscription' && <AddSubscription />}
                     {(activeLink === 'manage-subscription' || activeLink === 'subscription') && (
                         <ManageSubscription />
-                    )}
+                    )} */}
 
                     {activeLink === 'add-help' && <AddHelp />}
                     {(activeLink === 'manage-help' || activeLink === 'help') && <ManageHelp />}
@@ -347,10 +422,14 @@ function AdminDashboard() {
                         <ManageCategories />
                     )}
 
+                    {activeLink === 'add-subcategory' && <AddSubcategory />}
+                    {(activeLink === 'manage-subcategory' || activeLink === 'subcategory') && (
+                        <ManageSubcategories />
+                    )}
+
+                    {/* Hidden for now: Payment Settings view. */}
                     {activeLink === 'settings-general' || activeLink === 'settings' ? (
                         <Settings section="general" />
-                    ) : activeLink === 'settings-payment' ? (
-                        <Settings section="payment" />
                     ) : null}
 
                     {/* <Card title="Backend status" subtitle="Live data fetched with useApi">

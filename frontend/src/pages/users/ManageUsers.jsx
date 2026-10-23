@@ -11,7 +11,7 @@ function ManageUsers({ plan = 'all', title }) {
     const [search, setSearch] = useState('')
     const [viewTarget, setViewTarget] = useState(null)
     const [editTarget, setEditTarget] = useState(null)
-    const [deleteTarget, setDeleteTarget] = useState(null)
+    const [undoTarget, setUndoTarget] = useState(null)
     const [message, setMessage] = useState('')
 
     const fetchUsers = useCallback(
@@ -65,15 +65,28 @@ function ManageUsers({ plan = 'all', title }) {
     }
 
     const handleDelete = async () => {
-        if (!deleteTarget) return
-        const response = await apiFetch(`/admin/users/${deleteTarget.id}`, { method: 'DELETE' })
+        if (!undoTarget) return
+        const response = await apiFetch(`/admin/users/${undoTarget.id}`, { method: 'DELETE' })
         const data = await response.json()
         if (!data.success) {
             setMessage(data.message || 'Failed to delete user.')
         }
-        setDeleteTarget(null)
+        setUndoTarget(null)
         reload()
     }
+
+    const handleUndo = async () => {
+        if (!undoTarget) return
+        const response = await apiFetch(`/admin/users/${undoTarget.id}/restore`, { method: 'PUT' })
+        const data = await response.json()
+        if (!data.success) {
+            setMessage(data.message || 'Failed to restore user.')
+        }
+        setUndoTarget(null)
+        reload()
+    }
+
+    const isDeletedPlan = plan === 'deleted'
 
     // Short values are centred, free text (name, email) stays left.
     // `align` applies to the header and the cell together.
@@ -89,33 +102,45 @@ function ManageUsers({ plan = 'all', title }) {
             ),
         },
         { key: 'email', label: 'Email' },
+        { key: 'phone', label: 'Mobile' },
         {
-            key: 'premium',
-            label: 'Plan',
+            key: 'mantra_count',
+            label: 'Mantra Count',
             align: 'center',
-            render: (user) => (
-                <Badge variant={user.premium ? 'success' : 'default'}>
-                    {user.premium ? 'Premium' : 'Non Premium'}
-                </Badge>
+            render: (user) => user.mantra_count > 0 ? (
+                <Badge variant="info">{user.mantra_count}</Badge>
+            ) : (
+                <span style={{ color: 'var(--text)', opacity: 0.5 }}>0</span>
             ),
         },
         {
             key: 'actions',
             label: 'Actions',
             align: 'center',
-            render: (user) => (
-                <div className="demo__flex">
-                    <Button size="sm" variant="secondary" onClick={() => openView(user)}>
-                        View
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => openEdit(user)}>
-                        Edit
-                    </Button>
-                    <Button size="sm" variant="danger" onClick={() => setDeleteTarget(user)}>
-                        Delete
-                    </Button>
-                </div>
-            ),
+            render: (user) => {
+                if (isDeletedPlan) {
+                    return (
+                        <div className="demo__flex">
+                            <Button size="sm" variant="primary" onClick={() => setUndoTarget(user)}>
+                                Undo
+                            </Button>
+                        </div>
+                    )
+                }
+                return (
+                    <div className="demo__flex">
+                        <Button size="sm" variant="secondary" onClick={() => openView(user)}>
+                            View
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => openEdit(user)}>
+                            Edit
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => setUndoTarget(user)}>
+                            Delete
+                        </Button>
+                    </div>
+                )
+            },
         },
     ]
 
@@ -175,32 +200,9 @@ function ManageUsers({ plan = 'all', title }) {
                             <span>{viewTarget.email}</span>
                         </div>
                         <div>
-                            <strong>Plan</strong>
-                            <span>
-                                <Badge variant={viewTarget.premium ? 'success' : 'default'}>
-                                    {viewTarget.premium ? 'Premium' : 'Non Premium'}
-                                </Badge>
-                            </span>
+                            <strong>Mobile</strong>
+                            <span>{viewTarget.phone || '—'}</span>
                         </div>
-                        {viewTarget.premium ? (
-                            <>
-                                <div>
-                                    <strong>Premium start</strong>
-                                    <span>{formatDate(viewTarget.premium_start)}</span>
-                                </div>
-                                <div>
-                                    <strong>Premium end</strong>
-                                    <span>{formatDate(viewTarget.premium_end)}</span>
-                                </div>
-                            </>
-                        ) : (
-                            viewTarget.premium_end && (
-                                <div>
-                                    <strong>Premium ended</strong>
-                                    <span>{formatDate(viewTarget.premium_end)}</span>
-                                </div>
-                            )
-                        )}
                         <div>
                             <strong>Joined</strong>
                             <span>
@@ -237,12 +239,12 @@ function ManageUsers({ plan = 'all', title }) {
             </Modal>
 
             <Modal
-                open={Boolean(deleteTarget)}
-                onClose={() => setDeleteTarget(null)}
+                open={Boolean(undoTarget)}
+                onClose={() => setUndoTarget(null)}
                 title="Delete User"
                 footer={
                     <>
-                        <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+                        <Button variant="ghost" onClick={() => setUndoTarget(null)}>
                             Cancel
                         </Button>
                         <Button variant="danger" onClick={handleDelete}>
@@ -251,10 +253,33 @@ function ManageUsers({ plan = 'all', title }) {
                     </>
                 }
             >
-                {deleteTarget && (
+                {undoTarget && (
                     <p>
-                        Are you sure you want to delete <strong>{deleteTarget.name}</strong> (
-                        {deleteTarget.email})? This action cannot be undone.
+                        Are you sure you want to delete <strong>{undoTarget.name}</strong> (
+                        {undoTarget.email})? This action cannot be undone.
+                    </p>
+                )}
+            </Modal>
+
+            <Modal
+                open={Boolean(undoTarget)}
+                onClose={() => setUndoTarget(null)}
+                title="Restore User"
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => setUndoTarget(null)}>
+                            Cancel
+                        </Button>
+                        <Button variant="primary" onClick={handleUndo}>
+                            Restore
+                        </Button>
+                    </>
+                }
+            >
+                {undoTarget && (
+                    <p>
+                        Are you sure you want to restore <strong>{undoTarget.name}</strong> (
+                        {undoTarget.email})? This will allow them to log in again.
                     </p>
                 )}
             </Modal>

@@ -104,6 +104,8 @@ function ManageCategories() {
         const data = await response.json()
         if (!data.success) {
             setMessage(data.message || 'Failed to delete category.')
+            setDeleteTarget(null)
+            return
         }
         setDeleteTarget(null)
         reload()

@@ -1,0 +1,20 @@
+# --- Proxy API to Node.js ---
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Proxy API requests
+    RewriteRule ^api/(.*)$ http://127.0.0.1:5000/api/$1 [P,L,QSA]
+    RewriteRule ^uploads/(.*)$ http://127.0.0.1:5000/uploads/$1 [P,L,QSA]
+</IfModule>
+
+# --- React SPA Routing ---
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    RewriteRule ^index\.html$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . index.html [L]
+</IfModule>

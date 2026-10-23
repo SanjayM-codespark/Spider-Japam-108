@@ -75,6 +75,14 @@ function ManageContent() {
                 ),
         },
         {
+            key: 'subcategory_name',
+            label: 'Subcategory',
+            align: 'center',
+            // Optional, so most rows have none and show a dash.
+            render: (item) =>
+                item.subcategory_name ? item.subcategory_name : <Dash />,
+        },
+        {
             key: 'deity',
             label: 'Deity',
             render: (item) =>
@@ -113,6 +121,17 @@ function ManageContent() {
             // Content saved before the column existed reads as 108, which is the
             // default the form would have shown for it anyway.
             render: (item) => <Badge variant="info">{item.bead_count ?? 108}</Badge>,
+        },
+        {
+            key: 'is_default',
+            label: 'Default',
+            align: 'center',
+            render: (item) =>
+                item.is_default ? (
+                    <Badge variant="success">Default</Badge>
+                ) : (
+                    <span style={{ color: 'var(--text)', opacity: 0.5 }}>—</span>
+                ),
         },
         {
             key: 'actions',

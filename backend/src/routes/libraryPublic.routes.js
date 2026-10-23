@@ -9,5 +9,6 @@ const router = express.Router();
 router.get("/library", libraryController.getLibrary);
 router.get("/library/contents", libraryController.listContents);
 router.get("/library/contents/:id", libraryController.getContent);
+router.get("/library/subcategories", libraryController.listSubcategories);
 
 module.exports = router;

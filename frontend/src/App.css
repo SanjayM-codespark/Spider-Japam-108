@@ -174,6 +174,25 @@
   flex-wrap: wrap;
 }
 
+.demo__welcome {
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+}
+
+.demo__welcome-title {
+  margin: 0;
+  font-size: 24px;
+  color: var(--text-h);
+}
+
+.demo__welcome-text {
+  margin: 6px 0 0;
+  color: var(--text);
+}
+
 .demo__stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

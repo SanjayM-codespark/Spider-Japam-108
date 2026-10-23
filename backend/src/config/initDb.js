@@ -3,7 +3,7 @@ const { query } = require("./db");
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@naamjap.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@japam108.com";
 const ADMIN_FULL_NAME = process.env.ADMIN_FULL_NAME || "Admin";
 
 async function initDb() {
@@ -33,6 +33,98 @@ async function initDb() {
 
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS premium_start TIMESTAMPTZ`);
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS premium_end TIMESTAMPTZ`);
+    // App accounts log in with email + password, so a hash and a phone number
+    // are stored alongside the profile. Both are added separately and nullable
+    // so this also applies to a database whose sample users predate accounts.
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT`);
+    // One account per phone number, while leaving the sample users (which have
+    // no phone) repeatable.
+    await query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS users_phone_key ON users (phone) WHERE phone IS NOT NULL`
+    );
+
+    // Soft delete: keep data for admin review, exclude from login/queries
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ`);
+
+    // Country code for phone numbers (e.g., +91, +1, +44). Stored separately so
+    // the phone column can hold just the national number.
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS country_code VARCHAR(5)`);
+
+    // Password reset token and expiry
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token TEXT`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMPTZ`);
+
+    // User-specific naams (custom mantras created by users)
+    await query(`
+        CREATE TABLE IF NOT EXISTS user_naams (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name VARCHAR(160) NOT NULL,
+            mantra TEXT DEFAULT '',
+            bead_count INTEGER NOT NULL DEFAULT 108,
+            daily_goal INTEGER DEFAULT 0,
+            weekly_goal INTEGER DEFAULT 0,
+            monthly_goal INTEGER DEFAULT 0,
+            yearly_goal INTEGER DEFAULT 0,
+            is_default BOOLEAN NOT NULL DEFAULT false,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+    `);
+
+    // Only one default per user
+    await query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS user_naams_one_default_per_user
+        ON user_naams (user_id) WHERE is_default = true
+    `);
+
+    // Bead counts per user, per mantra, per day. `source` says whether naam_id
+    // points at an admin mantra (sacred_library) or one the user created
+    // (user_naams), so the two id spaces never collide.
+    await query(`
+        CREATE TABLE IF NOT EXISTS user_naam_counts (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            source VARCHAR(10) NOT NULL DEFAULT 'admin',
+            naam_id INTEGER NOT NULL,
+            date DATE NOT NULL,
+            bead_count INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE (user_id, source, naam_id, date)
+        )
+    `);
+
+    await query(
+        `CREATE INDEX IF NOT EXISTS user_naam_counts_user_date_idx ON user_naam_counts (user_id, date)`
+    );
+
+    // Meditation timer sessions, per user, per mantra, per day. The mantra is
+    // recorded so the timer report can be filtered by mantra; rows that predate
+    // this keep a NULL mantra and only ever count towards the all-mantras view.
+    await query(`
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            source VARCHAR(10),
+            naam_id INTEGER,
+            date DATE NOT NULL,
+            duration_seconds INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+    `);
+
+    await query(`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS source VARCHAR(10)`);
+    await query(`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS naam_id INTEGER`);
+
+    await query(
+        `CREATE INDEX IF NOT EXISTS user_sessions_user_date_idx ON user_sessions (user_id, date)`
+    );
+
+    await query(
+        `CREATE INDEX IF NOT EXISTS user_sessions_user_naam_date_idx ON user_sessions (user_id, source, naam_id, date)`
+    );
 
     await query(`
         CREATE TABLE IF NOT EXISTS subscriptions (
@@ -96,6 +188,29 @@ async function initDb() {
     await query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon VARCHAR(60) DEFAULT ''`);
     await query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT ''`);
 
+    // Subcategories group Sacred Library content within one category, so the app
+    // can offer a second level (Category -> Subcategory -> Content). They mirror
+    // a category's shape, including its own image, icon and active/inactive
+    // status.
+    await query(`
+        CREATE TABLE IF NOT EXISTS subcategories (
+            id SERIAL PRIMARY KEY,
+            category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+            name VARCHAR(120) NOT NULL,
+            description TEXT DEFAULT '',
+            icon VARCHAR(60) DEFAULT '',
+            image_url TEXT DEFAULT '',
+            status VARCHAR(20) NOT NULL DEFAULT 'active',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE (category_id, name)
+        )
+    `);
+
+    await query(
+        `CREATE INDEX IF NOT EXISTS subcategories_category_idx ON subcategories (category_id)`
+    );
+
     await query(`
         CREATE TABLE IF NOT EXISTS sacred_library (
             id SERIAL PRIMARY KEY,
@@ -124,6 +239,9 @@ async function initDb() {
     // size the counter, so the default matches the mala it already assumes.
     await query(`ALTER TABLE sacred_library ADD COLUMN IF NOT EXISTS bead_count INTEGER NOT NULL DEFAULT 108`);
 
+    // Only one content can be the default for mobile app home screen
+    await query(`ALTER TABLE sacred_library ADD COLUMN IF NOT EXISTS is_default BOOLEAN NOT NULL DEFAULT false`);
+
     // Added separately, and nullable, so this also applies to a database that
     // already holds content written before categories existed. Those rows have
     // no category to backfill, so the controllers require the field on create
@@ -131,6 +249,15 @@ async function initDb() {
     await query(
         `ALTER TABLE sacred_library
          ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id) ON DELETE RESTRICT`
+    );
+
+    // Optional second level of grouping within a category. Nullable so content
+    // that predates subcategories, and content the admin chooses not to file
+    // under one, still works. Deleting a subcategory that content still points
+    // at is refused (RESTRICT), matching how a category is protected.
+    await query(
+        `ALTER TABLE sacred_library
+         ADD COLUMN IF NOT EXISTS subcategory_id INTEGER REFERENCES subcategories(id) ON DELETE RESTRICT`
     );
 
     await query(`

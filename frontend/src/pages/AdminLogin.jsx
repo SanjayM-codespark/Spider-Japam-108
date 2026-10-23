@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Button, Badge, FormField, Input } from '../components/ui/index.js'
 import { usePageTitle } from '../usePageTitle.js'
+import { API_URL } from '../api.js'
+import logo from '../assets/japam108_logo.png'
 import './AdminLogin.css'
 
-const LOGIN_URL = 'http://localhost:5000/api/admin/login'
+const LOGIN_URL = `${API_URL}/admin/login`
 
 function AdminLogin() {
   usePageTitle('Admin Login')
@@ -50,7 +52,7 @@ function AdminLogin() {
     <div className="login">
       <main className="login__main">
         <div className="login__card">
-          <Badge variant="info">Admin</Badge>
+          <img src={logo} alt="Japam108 logo" className="login__logo" />
           <h1 className="login__title">Admin Login</h1>
           <p className="login__subtitle">Sign in to access the admin dashboard</p>
 
@@ -87,9 +89,9 @@ function AdminLogin() {
             </Button>
           </form>
 
-          <p className="login__back">
+          {/* <p className="login__back">
             <Link to="/">← Back to home</Link>
-          </p>
+          </p> */}
         </div>
       </main>
     </div>

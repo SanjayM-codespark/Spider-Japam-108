@@ -24,6 +24,15 @@
   box-sizing: border-box;
 }
 
+.login__logo {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  margin: 0 auto 20px;
+  border-radius: 16px;
+}
+
 .login__title {
   font-size: 28px;
   margin: 12px 0 4px;

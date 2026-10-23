@@ -1,0 +1,45 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "src/assets/completions.mp3",
+      "sha1": "8aadf10524e8ab8990b54b2c14f172dd8e114406"
+    },
+    {
+      "path": "src/assets/fonts/Montserrat-Bold.ttf",
+      "sha1": "be7c1438070ab637e11716915e4e50903726dcc8"
+    },
+    {
+      "path": "src/assets/fonts/Montserrat-ExtraBold.ttf",
+      "sha1": "84f16776e2099d3b57d8ed239b76e6fa3284b2e7"
+    },
+    {
+      "path": "src/assets/fonts/Montserrat-Medium.ttf",
+      "sha1": "77f3553415d858c653baea45aacab20196776334"
+    },
+    {
+      "path": "src/assets/fonts/Montserrat-Regular.ttf",
+      "sha1": "ec13ef1f2c99f8780d6f2eb3f9f27ef89f30161b"
+    },
+    {
+      "path": "src/assets/fonts/Montserrat-SemiBold.ttf",
+      "sha1": "79f74616d68b87d6cf89798fe72259036326567a"
+    },
+    {
+      "path": "src/assets/japam108_logo.png",
+      "sha1": "55f74ece22949d480aebf9bc9d2fb4e075ab3c14"
+    },
+    {
+      "path": "src/assets/meditation.mp3",
+      "sha1": "40de43cf7bc5be70fb325dc74a41abebaa8374dc"
+    },
+    {
+      "path": "src/assets/spiderjapam.png",
+      "sha1": "c6806e230705678a80f764b799c2cf1ddf761ea3"
+    },
+    {
+      "path": "src/assets/tap.wav",
+      "sha1": "bbc89b2e490208414bff4f75f5825398c2792f5f"
+    }
+  ]
+}

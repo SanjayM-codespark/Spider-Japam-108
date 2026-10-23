@@ -48,7 +48,10 @@ function SidebarItems({ links, depth = 0, parent = null, openMenus, onToggle, on
           return (
             <li key={`${linkKey}-group`}>
               <button type="button" className={groupClass} onClick={() => onToggle(linkKey)} aria-expanded={isOpen}>
-                {link.label}
+                <span className="ui-sidebar__link-main">
+                  {link.icon && <i className={`fas ${link.icon} ui-sidebar__icon`} aria-hidden="true" />}
+                  {link.label}
+                </span>
                 <span
                   className={`ui-sidebar__chevron${isOpen ? ' ui-sidebar__chevron--open' : ''}`}
                   aria-hidden="true"
@@ -82,6 +85,7 @@ function SidebarItems({ links, depth = 0, parent = null, openMenus, onToggle, on
               className={leafClass}
               onClick={(e) => handleLeafClick(e, link)}
             >
+              {link.icon && <i className={`fas ${link.icon} ui-sidebar__icon`} aria-hidden="true" />}
               {link.label}
             </a>
           </li>

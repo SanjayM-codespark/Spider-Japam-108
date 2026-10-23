@@ -1,6 +1,7 @@
 import { Button, Footer } from '../components/ui/index.js'
 import { usePageTitle } from '../usePageTitle.js'
 import { useSettings } from '../useSettings.js'
+import logo from '../assets/japam108_logo.png'
 import './Landing.css'
 
 function Landing() {
@@ -11,8 +12,9 @@ function Landing() {
     <div className="landing">
       <main className="landing__main">
         <div className="landing__hero">
-          <h1 className="landing__title">{appName}</h1>
-          <p className="landing__tagline">Chant. Count. Connect.</p>
+          <img src={logo} alt="Japam108 logo" className="landing__logo" />
+          {/* <h1 className="landing__title">{appName}</h1>
+          <p className="landing__tagline">Chant. Count. Connect.</p> */}
           <div className="landing__stores">
             <Button href={googlePlayUrl} size="lg">
               Get it on Google Play

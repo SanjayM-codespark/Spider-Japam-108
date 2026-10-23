@@ -1,4 +1,7 @@
-const API_URL = 'http://localhost:5000/api'
+// The backend serves both the site and the API from the same origin under
+
+// const API_URL = import.meta.env.VITE_API_URL || '/api'
+const API_URL = import.meta.env.VITE_API_URL || `${import.meta.env.BASE_URL}api`
 const TOKEN_KEY = 'naamjap_token'
 
 // Uploaded files are served from the server root, not from under /api, so the
@@ -11,7 +14,7 @@ function getToken() {
 
 function clearSession() {
   localStorage.removeItem(TOKEN_KEY)
-  localStorage.remove('naamjap_admin')
+  localStorage.removeItem('naamjap_admin')
 }
 
 async function apiFetch(path, options = {}) {

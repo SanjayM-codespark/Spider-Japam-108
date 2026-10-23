@@ -32,12 +32,15 @@ const BEAD_COUNTS = [108, 1008, 10008];
 const DEFAULT_BEAD_COUNT = 108;
 
 // Left join so a row whose category was somehow removed still lists, with a
-// null category name, rather than disappearing from the table.
+// null category name, rather than disappearing from the table. The subcategory
+// join is left too, since a subcategory is optional.
 const CONTENT_SELECT = `
     SELECT sl.id,
            sl.title,
            sl.category_id,
            c.name AS category_name,
+           sl.subcategory_id,
+           sc.name AS subcategory_name,
            sl.deity,
            sl.short_description,
            sl.content,
@@ -45,10 +48,12 @@ const CONTENT_SELECT = `
            sl.source,
            sl.status,
            sl.bead_count,
+           sl.is_default,
            sl.created_at,
            sl.updated_at
     FROM sacred_library sl
     LEFT JOIN categories c ON c.id = sl.category_id
+    LEFT JOIN subcategories sc ON sc.id = sl.subcategory_id
 `;
 
 const clean = (value) => (typeof value === "string" ? value.trim() : "");
@@ -94,10 +99,39 @@ const parseCategoryId = (value) => {
     return parsed;
 };
 
+/** Coerces a submitted subcategory id to a positive integer, or null. */
+const parseSubcategoryId = (value) => {
+    if (value === null || value === undefined || value === "") return null;
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) return null;
+
+    return parsed;
+};
+
+/**
+ * A subcategory has to belong to the content's own category, so content cannot
+ * be filed under a subcategory from an unrelated category. Returns an error
+ * message, or null when the pair is valid.
+ */
+const assertSubcategoryInCategory = async (subcategoryId, categoryId) => {
+    const result = await query(
+        "SELECT id FROM subcategories WHERE id = $1 AND category_id = $2",
+        [subcategoryId, categoryId]
+    );
+
+    if (result.rowCount === 0) {
+        return "That subcategory does not exist in the selected category.";
+    }
+
+    return null;
+};
+
 async function createContent(req, res) {
     const {
         title,
         category_id,
+        subcategory_id,
         deity,
         short_description,
         content,
@@ -105,6 +139,7 @@ async function createContent(req, res) {
         source,
         status,
         bead_count,
+        is_default,
     } = req.body || {};
 
     if (!title || !title.trim()) {
@@ -119,6 +154,14 @@ async function createContent(req, res) {
         return res.status(400).json({
             success: false,
             message: "Category is required.",
+        });
+    }
+
+    const subcategoryId = parseSubcategoryId(subcategory_id);
+    if (subcategoryId === null) {
+        return res.status(400).json({
+            success: false,
+            message: "Subcategory is required.",
         });
     }
 
@@ -152,14 +195,27 @@ async function createContent(req, res) {
             return res.status(400).json({ success: false, message: categoryError });
         }
 
+        if (subcategoryId !== null) {
+            const subcategoryError = await assertSubcategoryInCategory(subcategoryId, categoryId);
+            if (subcategoryError) {
+                return res.status(400).json({ success: false, message: subcategoryError });
+            }
+        }
+
+        // If this content is being set as default, unset any existing default
+        if (is_default === true) {
+            await query("UPDATE sacred_library SET is_default = false WHERE is_default = true");
+        }
+
         const result = await query(
             `INSERT INTO sacred_library
-                 (title, category_id, deity, short_description, content, meaning, source, status, bead_count)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING id`,
+                 (title, category_id, subcategory_id, deity, short_description, content, meaning, source, status, bead_count, is_default)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+              RETURNING id`,
             [
                 title.trim(),
                 categoryId,
+                subcategoryId,
                 clean(deity),
                 clean(short_description),
                 content.trim(),
@@ -167,6 +223,7 @@ async function createContent(req, res) {
                 clean(source),
                 status === undefined ? "draft" : status,
                 submittedBeadCount === null ? DEFAULT_BEAD_COUNT : submittedBeadCount,
+                is_default === true,
             ]
         );
 
@@ -220,7 +277,7 @@ async function listContents(req, res) {
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
     try {
-        const result = await query(`${CONTENT_SELECT}${where} ORDER BY sl.title ASC`, params);
+        const result = await query(`${CONTENT_SELECT}${where} ORDER BY sl.id ASC`, params);
 
         return res.json({
             success: true,
@@ -267,6 +324,7 @@ async function updateContent(req, res) {
     const {
         title,
         category_id,
+        subcategory_id,
         deity,
         short_description,
         content,
@@ -274,6 +332,7 @@ async function updateContent(req, res) {
         source,
         status,
         bead_count,
+        is_default,
     } = req.body || {};
 
     if (title !== undefined && !title.trim()) {
@@ -309,6 +368,19 @@ async function updateContent(req, res) {
         }
     }
 
+    // undefined = leave the current subcategory; if provided, it must be a
+    // positive integer (cannot be cleared). Subcategory is mandatory.
+    let nextSubcategoryId;
+    if (subcategory_id !== undefined) {
+        nextSubcategoryId = parseSubcategoryId(subcategory_id);
+        if (nextSubcategoryId === null) {
+            return res.status(400).json({
+                success: false,
+                message: "Subcategory is required.",
+            });
+        }
+    }
+
     let nextBeadCount;
     if (bead_count !== undefined) {
         nextBeadCount = parseBeadCount(bead_count);
@@ -322,7 +394,7 @@ async function updateContent(req, res) {
 
     try {
         const existing = await query(
-            "SELECT id FROM sacred_library WHERE id = $1",
+            "SELECT id, category_id, subcategory_id FROM sacred_library WHERE id = $1",
             [id]
         );
 
@@ -333,6 +405,8 @@ async function updateContent(req, res) {
             });
         }
 
+        const current = existing.rows[0];
+
         if (nextCategoryId !== undefined) {
             const categoryError = await assertCategoryExists(nextCategoryId);
             if (categoryError) {
@@ -340,24 +414,55 @@ async function updateContent(req, res) {
             }
         }
 
+        // The category and the subcategory have to agree: a subcategory belongs
+        // to exactly one category. Work out the pair that will result, so moving
+        // content to another category cannot leave it filed under a subcategory
+        // from its old one.
+        const effectiveCategoryId =
+            nextCategoryId === undefined ? current.category_id : nextCategoryId;
+        const effectiveSubcategoryId =
+            nextSubcategoryId === undefined ? current.subcategory_id : nextSubcategoryId;
+
+        if (effectiveSubcategoryId === null) {
+            return res.status(400).json({ success: false, message: "Subcategory is required." });
+        }
+
+        const subcategoryError = await assertSubcategoryInCategory(
+            effectiveSubcategoryId,
+            effectiveCategoryId
+        );
+        if (subcategoryError) {
+            return res.status(400).json({ success: false, message: subcategoryError });
+        }
+
+        // If this content is being set as default, unset any existing default
+        if (is_default === true) {
+            await query("UPDATE sacred_library SET is_default = false WHERE is_default = true AND id != $1", [id]);
+        }
+
         // Only overwrite the fields the request actually carries, so saving a
-        // meaning from the submenu page cannot blank the title or content.
+        // meaning from the submenu page cannot blank the title or content. The
+        // subcategory is written from the resolved value rather than COALESCE,
+        // because null is meaningful here: it clears the subcategory.
         await query(
             `UPDATE sacred_library
              SET title = COALESCE($1, title),
-                 category_id = COALESCE($2, category_id),
-                 deity = COALESCE($3, deity),
-                 short_description = COALESCE($4, short_description),
-                 content = COALESCE($5, content),
-                 meaning = COALESCE($6, meaning),
-                 source = COALESCE($7, source),
-                 status = COALESCE($8, status),
-                 bead_count = COALESCE($9, bead_count),
+                 category_id = $2,
+                 subcategory_id = $3,
+                 deity = COALESCE($4, deity),
+                 short_description = COALESCE($5, short_description),
+                 content = COALESCE($6, content),
+                 meaning = COALESCE($7, meaning),
+                 source = COALESCE($8, source),
+                 status = COALESCE($9, status),
+                 bead_count = COALESCE($10, bead_count),
+                 is_default = COALESCE($11, is_default),
                  updated_at = NOW()
-             WHERE id = $10`,
+             WHERE id = $12`,
             [
                 title === undefined ? null : title.trim(),
-                nextCategoryId,
+                effectiveCategoryId,
+                effectiveSubcategoryId,
                 deity === undefined ? null : clean(deity),
                 short_description === undefined ? null : clean(short_description),
                 content === undefined ? null : content.trim(),
@@ -365,6 +470,7 @@ async function updateContent(req, res) {
                 source === undefined ? null : clean(source),
                 status === undefined ? null : status,
                 nextBeadCount === undefined ? null : nextBeadCount,
+                is_default === undefined ? null : is_default,
                 id,
             ]
         );
